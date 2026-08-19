@@ -56,7 +56,10 @@ fun runVoiceTyper() {
         config = config,
         onRecordToggle = {},
         onLanguageToggle = { processor.toggleLanguage() },
-        onSettings = { logger.info("Настройки открыты") },
+        onSettings = {
+            val settingsDialog = com.voicetyper.SettingsDialog(frame, configManager, uiCanvas)
+            settingsDialog.showDialog()
+        },
         // Show About dialog when user selects 'О программе'
         onAbout = {
             val aboutDialog = com.voicetyper.AboutDialog(frame)
