@@ -50,12 +50,18 @@ fun runVoiceTyper() {
     lateinit var uiCanvas: UiCanvas
     
     // UI — создаём frame отдельно для референсов
+    // Declare frame variable for About dialog callback
+    lateinit var frame: JFrame
     uiCanvas = UiCanvas(
         config = config,
         onRecordToggle = {},
         onLanguageToggle = { processor.toggleLanguage() },
         onSettings = { logger.info("Настройки открыты") },
-        onAbout = { logger.info("О программе") },
+        // Show About dialog when user selects 'О программе'
+        onAbout = {
+            val aboutDialog = com.voicetyper.AboutDialog(frame)
+            aboutDialog.showDialog()
+        },
         onExit = { processor.shutdown(); System.exit(0) },
         onHide = { uiCanvas.frame?.isVisible = false },
         onStatusUpdate = { status, _ -> logger.info("Статус: $status") }
@@ -87,7 +93,8 @@ fun runVoiceTyper() {
     )
     
     // Создание и показ UI
-    val frame = uiCanvas.createFrame()
+    // Create main frame and assign to variable for callbacks
+    frame = uiCanvas.createFrame()
     frame.defaultCloseOperation = JFrame.DO_NOTHING_ON_CLOSE
     frame.addWindowListener(object : java.awt.event.WindowAdapter() {
         override fun windowClosing(e: java.awt.event.WindowEvent?) {
