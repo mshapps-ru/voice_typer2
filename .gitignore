@@ -28,6 +28,7 @@ Thumbs.db
 # Build outputs
 build/
 out/
+logs/
 *.class
 *.jar
 *.war
