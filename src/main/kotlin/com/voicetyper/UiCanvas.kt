@@ -13,6 +13,7 @@ import java.awt.GraphicsEnvironment
 import javax.swing.*
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
+import kotlin.math.pow
 
 /**
  * Кастомный UI-интерфейс (аналог tkinter Canvas из Python-версии).
@@ -132,14 +133,18 @@ class UiCanvas(
                     return
                 }
                 
-                // Глобус (левая часть) - переключение языка
-                if (x <= 70 && y >= 50 && y <= 100) {
+                // Глобус (левая часть) – переключение языка
+                val globeCenterX = 45
+                val globeCenterY = panelHeight / 2 + 2
+                if ((x - globeCenterX).toDouble().pow(2) + (y - globeCenterY).toDouble().pow(2) < 30.0 * 30.0) {
                     onLanguageToggle()
                     return
                 }
                 
-                // Шестерёнка (правая часть) - меню
-                if (x >= panelWidth - 65 && y >= 50 && y <= 100) {
+                // Шестерёнка (правая часть) – меню
+                val gearCenterX = panelWidth - 45
+                val gearCenterY = panelHeight / 2 + 2
+                if ((x - gearCenterX).toDouble().pow(2) + (y - gearCenterY).toDouble().pow(2) < 30.0 * 30.0) {
                     showContextMenu(e.xOnScreen, e.yOnScreen)
                     return
                 }
@@ -155,8 +160,11 @@ class UiCanvas(
         maximumSize = Dimension(panelWidth, panelHeight)
         revalidate()
         repaint()
+        // Ensure frame resizes if dimensions changed
+        this.frame?.pack()
     }
 
+    // Update status when recording state changes (used by AppProcessor)
     fun setRecording(recording: Boolean) {
         isRecording = recording
         val status = if (recording) {
@@ -168,6 +176,7 @@ class UiCanvas(
         repaint()
     }
 
+    // Set a custom status text when not recording
     fun setStatus(text: String) {
         currentStatusText = text
         if (!isRecording) {

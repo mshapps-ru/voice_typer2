@@ -80,6 +80,8 @@ class SettingsDialog(
             configManager.update(updated)
             val (w, h) = AppConfig.parseWindowSize(selected)
             uiCanvas.updateDimensions(w, h)
+            // Ensure main frame resizes to new dimensions
+            uiCanvas.frame?.pack()
             dialog.dispose()
         }
 
