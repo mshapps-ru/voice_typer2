@@ -170,10 +170,7 @@ class AppProcessor(
         val newLang = if (config.language == "ru") "en" else "ru"
         config = config.copy(language = newLang)
         configManager.update(config)
-        uiCanvas.refreshLanguage()
-        
-        val status = Locales.get(config.appLanguage, "language_status", newLang.uppercase())
-        uiCanvas.setStatus(status)
+        uiCanvas.setLanguage(newLang)
         
         logger.info("Язык изменён: $newLang")
     }

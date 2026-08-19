@@ -9,6 +9,7 @@ import java.awt.event.WindowEvent
 import java.awt.geom.Arc2D
 import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
+import java.awt.GraphicsEnvironment
 import javax.swing.*
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
@@ -125,8 +126,8 @@ class UiCanvas(
                 val x = e.x
                 val y = e.y
                 
-                // Кнопка закрытия (правый верхний угол)
-                if (x >= panelWidth - 20 && y <= 25) {
+                // Кнопка закрытия (правый верхний угол, увеличенная область)
+                if (x >= panelWidth - 25 && y <= 28) {
                     onHide()
                     return
                 }
@@ -183,6 +184,15 @@ class UiCanvas(
         repaint()
     }
 
+    /** Обновляет язык и перерисовывает UI */
+    fun setLanguage(newLanguage: String) {
+        currentLanguage = newLanguage
+        if (!isRecording) {
+            setStatus(currentStatusText)
+        }
+        repaint()
+    }
+
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
         val g2 = g.create() as Graphics2D
@@ -223,13 +233,16 @@ class UiCanvas(
     private fun drawCloseButton(g2: Graphics2D) {
         val x = panelWidth - 20
         val y = 18
-        g2.font = Font("Arial", Font.BOLD, 11)
+        g2.font = Font("Arial", Font.BOLD, 14)
         g2.color = ACCENT_MUTED
         val text = "✕"
-        val bounds = g2.fontMetrics.getStringBounds(text, g2)
-        val textX = x - bounds.width / 2
-        val textY = y + bounds.height / 2
-        g2.drawString(text, textX.toFloat(), textY.toFloat())
+        
+        // Рисуем крестик линиями для надёжности
+        val cx = x.toFloat()
+        val cy = y.toFloat()
+        val size = 6f
+        g2.drawLine((cx - size).toInt(), (cy - size).toInt(), (cx + size).toInt(), (cy + size).toInt())
+        g2.drawLine((cx - size).toInt(), (cy + size).toInt(), (cx + size).toInt(), (cy - size).toInt())
     }
 
     private fun drawGlobe(g2: Graphics2D) {
@@ -356,19 +369,24 @@ class UiCanvas(
     }
 
     /**
-     * Создаёт и показывает JFrame для этого UI
+     * Создаёт и показывает JFrame для этого UI, центрируя на экране
      */
     fun createFrame(): JFrame {
         val createdFrame = JFrame("Voice Typer").apply {
             isUndecorated = true
             isAlwaysOnTop = true
             background = BG_COLOR
-            setLocationByPlatform(true)
             defaultCloseOperation = JFrame.DO_NOTHING_ON_CLOSE
             isResizable = false
             add(this@UiCanvas)
             pack()
         }
+
+        // Центрируем окно на экране
+        val screenSize = GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds
+        val frameX = (screenSize.width - createdFrame.width) / 2
+        val frameY = (screenSize.height - createdFrame.height) / 2
+        createdFrame.setLocation(frameX, frameY)
 
         this.frame = createdFrame
 

@@ -21,6 +21,18 @@ class TrayIconManager(
     @Volatile
     private var trayIcon: TrayIcon? = null
 
+    /** Добавляет обработчик двойного клика на иконку в трее */
+    private fun addDoubleClickHandler(trayIcon: TrayIcon) {
+        trayIcon.addMouseListener(object : java.awt.event.MouseAdapter() {
+            override fun mouseClicked(e: java.awt.event.MouseEvent) {
+                if (e.clickCount == 2) {
+                    // Двойной клик — сворачивание/разворачивание окна
+                    restoreCallback()
+                }
+            }
+        })
+    }
+
     init {
         if (SystemTray.isSupported()) {
             try {
@@ -32,7 +44,10 @@ class TrayIconManager(
                 trayIcon = TrayIcon(icon, tooltip, menu)
                 trayIcon?.isImageAutoSize = true
 
-                tray.add(trayIcon!!)
+                // Добавляем обработчик двойного клика
+                addDoubleClickHandler(trayIcon!!)
+
+                tray.add(trayIcon)
                 logger.info("Иконка в системном трее добавлена")
             } catch (e: Exception) {
                 logger.error("Ошибка инициализации системного трея: ${e.message}")
