@@ -20,7 +20,11 @@ class AppProcessor(
 
     private val logger = Logger.loggerFor("AppProcessor")
     private val executor = Executors.newCachedThreadPool()
-    private var config = configManager.getConfig()
+    var config = configManager.getConfig()
+        private set
+
+    @Volatile
+    private var isVisibilityToggled = false
 
     @Volatile
     private var isRecording = false
@@ -152,7 +156,17 @@ class AppProcessor(
         }
     }
 
-    private fun toggleLanguage() {
+    /** Переключение видимости окна */
+    fun toggleVisibility() {
+        isVisibilityToggled = !isVisibilityToggled
+        uiCanvas.frame?.apply {
+            isVisible = isVisibilityToggled
+        }
+        logger.info("Переключение видимости: ${if (isVisibilityToggled) "показать" else "скрыть"}")
+    }
+
+    /** Переключение языка */
+    fun toggleLanguage() {
         val newLang = if (config.language == "ru") "en" else "ru"
         config = config.copy(language = newLang)
         configManager.update(config)
@@ -162,11 +176,6 @@ class AppProcessor(
         uiCanvas.setStatus(status)
         
         logger.info("Язык изменён: $newLang")
-    }
-
-    private fun toggleVisibility() {
-        // Логика скрытия/показа окна
-        logger.info("Переключение видимости окна")
     }
 
     fun shutdown() {

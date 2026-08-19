@@ -45,15 +45,19 @@ fun runVoiceTyper() {
     val whisperEngine = WhisperEngine(config)
     val clipboardManager = ClipboardManager()
     
+    // Создание процессора
+    lateinit var processor: AppProcessor
+    lateinit var uiCanvas: UiCanvas
+    
     // UI — создаём frame отдельно для референсов
-    val uiCanvas = UiCanvas(
+    uiCanvas = UiCanvas(
         config = config,
         onRecordToggle = {},
-        onLanguageToggle = { /* обрабатывается в AppProcessor */ },
+        onLanguageToggle = { processor.toggleLanguage() },
         onSettings = { logger.info("Настройки открыты") },
         onAbout = { logger.info("О программе") },
-        onExit = { exitApplication() },
-        onHide = { /* скрытие в трей */ },
+        onExit = { processor.shutdown(); System.exit(0) },
+        onHide = { uiCanvas.frame?.isVisible = false },
         onStatusUpdate = { status, _ -> logger.info("Статус: $status") }
     )
     
@@ -62,7 +66,7 @@ fun runVoiceTyper() {
         TrayIconManager(
             config = config,
             restoreCallback = { uiCanvas.frame?.isVisible = true },
-            exitCallback = { exitApplication() }
+            exitCallback = { processor.shutdown(); System.exit(0) }
         )
     } else {
         logger.warn("SystemTray не поддерживается на этой платформе")
@@ -72,8 +76,7 @@ fun runVoiceTyper() {
     // Горячие клавиши
     val hotkeyListener = HotkeyListener()
     
-    // Создание процессора
-    val processor = AppProcessor(
+    processor = AppProcessor(
         configManager = configManager,
         audioRecorder = audioRecorder,
         whisperEngine = whisperEngine,

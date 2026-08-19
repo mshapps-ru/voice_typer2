@@ -73,8 +73,11 @@ class UiCanvas(
     var frame: JFrame? = null
 
     // Позиции для перетаскивания
-    private var dragPoint: Point? = null
-    private var windowBounds = Rectangle(0, 0)
+    private var isDragging = false
+    private var dragStartScreenX = 0
+    private var dragStartScreenY = 0
+    private var dragFrameOriginX = 0
+    private var dragFrameOriginY = 0
 
     // Размеры
     var panelWidth: Int = 260
@@ -87,31 +90,57 @@ class UiCanvas(
         isOpaque = false
         preferredSize = Dimension(panelWidth, panelHeight)
 
-        // Обработчики мыши
+        // Обработчики мыши для перетаскивания окна
         addMouseListener(object : MouseAdapter() {
             override fun mousePressed(e: MouseEvent) {
-                dragPoint = e.point
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    val frame = SwingUtilities.getWindowAncestor(this@UiCanvas) ?: return
+                    isDragging = true
+                    dragStartScreenX = e.xOnScreen
+                    dragStartScreenY = e.yOnScreen
+                    dragFrameOriginX = frame.location.x
+                    dragFrameOriginY = frame.location.y
+                }
             }
 
             override fun mouseReleased(e: MouseEvent) {
-                dragPoint = null
+                isDragging = false
             }
         })
 
         addMouseMotionListener(object : MouseMotionAdapter() {
             override fun mouseDragged(e: MouseEvent) {
-                val frame = SwingUtilities.getWindowAncestor(this@UiCanvas) as? JFrame ?: return
-                val newX = frame.location.x + (e.x - (dragPoint?.x ?: 0))
-                val newY = frame.location.y + (e.y - (dragPoint?.y ?: 0))
-                frame.location = Point(newX, newY)
-                dragPoint = e.point
+                if (!isDragging) return
+                val dx = e.xOnScreen - dragStartScreenX
+                val dy = e.yOnScreen - dragStartScreenY
+                val frame = SwingUtilities.getWindowAncestor(this@UiCanvas) ?: return
+                frame.location = Point(dragFrameOriginX + dx, dragFrameOriginY + dy)
             }
         })
 
+        // Обработчик кликов для интерактивных элементов
         addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
-                if (SwingUtilities.isLeftMouseButton(e) && e.clickCount == 1) {
-                    // Клик для интерактивных элементов обрабатывается в paintComponent
+                if (!SwingUtilities.isLeftMouseButton(e)) return
+                val x = e.x
+                val y = e.y
+                
+                // Кнопка закрытия (правый верхний угол)
+                if (x >= panelWidth - 20 && y <= 25) {
+                    onHide()
+                    return
+                }
+                
+                // Глобус (левая часть) - переключение языка
+                if (x <= 70 && y >= 50 && y <= 100) {
+                    onLanguageToggle()
+                    return
+                }
+                
+                // Шестерёнка (правая часть) - меню
+                if (x >= panelWidth - 65 && y >= 50 && y <= 100) {
+                    showContextMenu(e.xOnScreen, e.yOnScreen)
+                    return
                 }
             }
         })
@@ -284,6 +313,46 @@ class UiCanvas(
             setStatus(currentStatusText)
         }
         repaint()
+    }
+
+    /**
+     * Показывает контекстное меню при клике на шестерёнку
+     */
+    private fun showContextMenu(screenX: Int, screenY: Int) {
+        val popupMenu = JPopupMenu()
+        
+        // Пункт "Настройки"
+        val settingsItem = JMenuItem("Настройки")
+        settingsItem.addActionListener {
+            onSettings()
+        }
+        popupMenu.add(settingsItem)
+        
+        // Пункт "О программе"
+        val aboutItem = JMenuItem("О программе")
+        aboutItem.addActionListener {
+            onAbout()
+        }
+        popupMenu.add(aboutItem)
+        
+        // Разделитель
+        popupMenu.addSeparator()
+        
+        // Пункт "Выход"
+        val exitItem = JMenuItem("Выход")
+        exitItem.addActionListener {
+            onExit()
+        }
+        popupMenu.add(exitItem)
+        
+        // Рассчитываем позицию меню относительно позиции клика на экране
+        val frame = SwingUtilities.getWindowAncestor(this) ?: return
+        val frameLocation = frame.locationOnScreen
+        val localX = screenX - frameLocation.x
+        val localY = screenY - frameLocation.y
+
+        // Показываем меню чуть ниже и правее позиции клика
+        popupMenu.show(this, localX + 5, localY + 5)
     }
 
     /**
