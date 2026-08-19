@@ -25,13 +25,15 @@ class AboutDialog(private val parent: JFrame?) {
         dialog.add(descriptionLabel, BorderLayout.CENTER)
 
         // Кнопка закрытия в правом верхнем углу (крестик)
-        val closeButton = JButton("X")
+        val closeButton = JButton("x")
         closeButton.toolTipText = Locales.get("ru", "about_close")
-        closeButton.preferredSize = Dimension(30, 30)
+        closeButton.preferredSize = Dimension(45, 45)
         closeButton.isContentAreaFilled = false
         closeButton.isBorderPainted = false
         closeButton.isFocusPainted = false
-        closeButton.foreground = Color.WHITE
+        // Use same accent muted color as main window close icon
+        closeButton.foreground = Color(142,135,164)
+        closeButton.font = Font("Arial", Font.BOLD, 16)
         closeButton.addActionListener { dialog.dispose() }
 
         // Панель для кнопки закрытия (с правым выравниванием)
