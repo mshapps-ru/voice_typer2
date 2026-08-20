@@ -145,7 +145,7 @@ class SettingsDialog(
 
         dialog.pack()
         // Увеличиваем размеры окна в 2 раза от исходного размера
-        dialog.setSize(dialog.width * 2, dialog.height * 2)
+        dialog.setSize(dialog.width * 2, dialog.height + dialog.height / 2 )
         dialog.setLocationRelativeTo(parent)
         dialog.isAlwaysOnTop = true
         dialog.isVisible = true
