@@ -1,5 +1,9 @@
 package com.voicetyper
 
+import java.io.BufferedInputStream
+import java.net.URL
+import java.nio.file.*
+import java.util.zip.ZipInputStream
 import java.awt.EventQueue
 import java.awt.Frame
 import java.awt.SystemTray
@@ -32,6 +36,44 @@ fun runVoiceTyper() {
     val logger = Logger.loggerFor("Main")
     logger.info("=== Voice Typer v1.0.0 (Kotlin) ===")
     
+    // Инициализация ресурсов для Windows
+    val winResDir = File("resources", "win")
+    winResDir.mkdirs()
+    try {
+        // Определяем разрядность ОС
+        val osArch = System.getProperty("os.arch")
+        val is64Bit = osArch.contains("amd64") || osArch.contains("x86_64") || osArch.contains("aarch64")
+        val urlStr = if (is64Bit) {
+            "https://github.com/ggml-org/whisper.cpp/releases/latest/download/whisper-bin-x64.zip"
+        } else {
+            "https://github.com/ggml-org/whisper.cpp/releases/latest/download/whisper-bin-Win32.zip"
+        }
+        val url = URL(urlStr)
+        val tmpZip = Files.createTempFile("whisper", ".zip")
+        BufferedInputStream(url.openStream()).use { input ->
+            Files.copy(input, tmpZip, StandardCopyOption.REPLACE_EXISTING)
+        }
+        ZipInputStream(Files.newInputStream(tmpZip)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                // Strip leading folder if present (e.g., "Release/..." or similar)
+                val parts = entry.name.split("/")
+                val relPath = if (parts.size > 1) parts.subList(1, parts.size).joinToString("/") else parts[0]
+                val outFile = File(winResDir, relPath)
+                if (entry.isDirectory) {
+                    outFile.mkdirs()
+                } else {
+                    outFile.parentFile?.mkdirs()
+                    Files.copy(zis, outFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+                zis.closeEntry()
+                entry = zis.nextEntry
+            }
+        }
+        Files.deleteIfExists(tmpZip)
+    } catch (e: Exception) {
+        logger.warn("Failed to download/untar whisper binaries: ${e.message}")
+    }
     // Загрузка конфигурации
     val configDir = File(System.getProperty("user.home"), ".config/voice-typer")
     val configPath = File(configDir, "config.json")

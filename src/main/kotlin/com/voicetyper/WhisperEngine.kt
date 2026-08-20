@@ -31,7 +31,7 @@ class WhisperEngine(private val config: AppConfig) {
 
     // URL для скачивания модели (GitHub releases)
     private val modelUrl: String
-        get() = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${config.modelSize.uppercase()}.bin"
+        get() = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${config.modelSize}.bin"
 
     /**
      * Скачивает модель если её нет
