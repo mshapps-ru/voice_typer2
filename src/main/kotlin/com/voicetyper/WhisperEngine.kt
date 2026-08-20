@@ -73,14 +73,14 @@ class WhisperEngine(private val config: AppConfig) {
      * Запускает транскрипцию WAV-файла асинхронно.
      * @return CompletableFuture с результатом распознания
      */
-    fun transcribeAsync(wavFile: File): CompletableFuture<TranscriptionResult> {
+    fun transcribeAsync(wavFile: File, lang: String ): CompletableFuture<TranscriptionResult> {
         return CompletableFuture.supplyAsync {
             try {
                 val jsonParser = WhisperJsonParser()
                 logger.info("Запуск транскрипции: ${wavFile.absolutePath}")
-                logger.info("Модель: ${config.modelSize}, Язык: ${config.language}")
+                logger.info("Модель: ${config.modelSize}, Язык: ${lang}")
 
-                val process = ProcessBuilder(*buildCommand(wavFile))
+                val process = ProcessBuilder(*buildCommand(wavFile, lang))
                     .redirectErrorStream(true)
                     .start()
 
@@ -112,7 +112,7 @@ class WhisperEngine(private val config: AppConfig) {
                 }
 
                 val result = jsonParser.parse(finalOutput)
-                logger.info("Распознавание завершено: ${result.text.take(50)}")
+                logger.info("Распознавание завершено: ${result.text.take(150)}")
                 result
             } catch (e: Exception) {
                 logger.error("Ошибка транскрипции: ${e.message}")
@@ -139,7 +139,7 @@ class WhisperEngine(private val config: AppConfig) {
         return ensureModelAvailable()
     }
 
-    private fun buildCommand(wavFile: File): Array<String> {
+    private fun buildCommand(wavFile: File, lang: String ): Array<String> {
         val cmd = mutableListOf(
             whisperExecutable,
             "--file", wavFile.absolutePath,
@@ -151,7 +151,7 @@ class WhisperEngine(private val config: AppConfig) {
         // Язык: оставляем авто, если не указано явно. Это позволяет Whisper автоматически определять язык.
         if (config.language.isNotEmpty() && config.language != "auto") {
             cmd.add("--language")
-            cmd.add(config.language)
+            cmd.add(lang)
         }
 
         // Промпт: Отключено, так как может влиять на распознавание

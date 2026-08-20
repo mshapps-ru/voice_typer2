@@ -20,7 +20,7 @@ data class AppConfig(
     val beamSize: Int = 5,
 
     // Язык
-    val language: String = "",
+    var language: String = "",
     val appLanguage: String = "ru",
 
     // Параметры ввода

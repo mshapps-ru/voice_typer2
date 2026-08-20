@@ -117,11 +117,13 @@ class AppProcessor(
         val tempFile = File.createTempFile("voice_typer_", ".wav")
         tempFile.deleteOnExit()
 
+        var lang = config.language
+
         try {
             WavFileWriter().write(audioData, tempFile, config.sampleRate)
 
             // Запускаем транскрипцию
-            val future = whisperEngine.transcribeAsync(tempFile)
+            val future = whisperEngine.transcribeAsync(tempFile, lang)
             future.thenAccept { result ->
                 EventQueue.invokeLater {
                     if (result.success && result.text.isNotEmpty()) {
@@ -168,8 +170,10 @@ class AppProcessor(
         config = config.copy(language = newLang)
         configManager.update(config)
         uiCanvas.setLanguage(newLang)
-        
-        logger.info("Язык изменён: $newLang")
+
+        config.language = newLang;
+
+        logger.info("Язык транскрибации изменён: $newLang")
     }
 
     fun shutdown() {
