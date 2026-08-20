@@ -75,52 +75,48 @@ class WhisperEngine(private val config: AppConfig) {
      */
     fun transcribeAsync(wavFile: File): CompletableFuture<TranscriptionResult> {
         return CompletableFuture.supplyAsync {
-            val jsonParser = WhisperJsonParser()
             try {
+                val jsonParser = WhisperJsonParser()
                 logger.info("Запуск транскрипции: ${wavFile.absolutePath}")
                 logger.info("Модель: ${config.modelSize}, Язык: ${config.language}")
 
-                // Собираем команду
-                val command = buildCommand(wavFile)
-
-                logger.debug("Команда: ${command.joinToString(" ")}")
-
-                val process = ProcessBuilder(*command)
-                    .redirectErrorStream(false) // отделяем stderr от stdout
+                val process = ProcessBuilder(*buildCommand(wavFile))
+                    .redirectErrorStream(true)
                     .start()
 
-                // Читаем stdout (JSON вывод)
-                val stdoutText = process.inputStream.bufferedReader().use { it.readText() }
-                
-                // Читаем stderr (debug-сообщения)
-                val stderrText = process.errorStream.bufferedReader().use { it.readText() }
-                
-                // Логируем stderr для отладки
-                if (stderrText.isNotBlank()) {
-                    logger.debug("stderr: ${stderrText.take(1000)}")
-                }
-
-                val exitCode = process.waitFor(60, TimeUnit.SECONDS)
-
-                if (!exitCode) {
+                if (!process.waitFor(60, TimeUnit.SECONDS)) {
                     logger.error("Таймаут транскрипции")
                     process.destroyForcibly()
                     return@supplyAsync TranscriptionResult("", success = false, error = "Таймаут транскрипции")
                 }
 
-                if (process.exitValue() != 0) {
-                    logger.error("Whisper завершился с кодом ${process.exitValue()}: $stderrText")
-                    return@supplyAsync TranscriptionResult("", success = false, error = stderrText.take(500))
+                val exitCode = process.exitValue()
+                if (exitCode != 0) {
+                    logger.error("Whisper завершился с кодом $exitCode")
+                    return@supplyAsync TranscriptionResult("", success = false, error = "Код возврата: $exitCode")
                 }
 
-                // Парсим JSON-результат из stdout
-                val result = jsonParser.parse(stdoutText)
+                val stdoutText = process.inputStream.bufferedReader().use { it.readText() }
+                val jsonFile = File(wavFile.parentFile, wavFile.name + ".json")
+                val finalOutput = if (jsonFile.exists()) {
+                    try {
+                        logger.info("Транскрипция читается из JSON‑файла ${jsonFile.absolutePath}")
+                        jsonFile.readText(Charsets.UTF_8)
+                    } catch (e: Exception) {
+                        logger.warn("Не удалось прочитать JSON‑файл ${jsonFile.absolutePath}: ${e.message}")
+                        stdoutText
+                    }
+                } else {
+                    logger.info("JSON‑файл не найден, читаем stdout процесса")
+                    stdoutText
+                }
+
+                val result = jsonParser.parse(finalOutput)
                 logger.info("Распознавание завершено: ${result.text.take(50)}")
                 result
-
             } catch (e: Exception) {
                 logger.error("Ошибка транскрипции: ${e.message}")
-                TranscriptionResult("", success = false, error = e.message)
+                TranscriptionResult("", success = false, error = e.message ?: "Неизвестная ошибка")
             }
         }
     }
@@ -152,17 +148,17 @@ class WhisperEngine(private val config: AppConfig) {
             "--output-json"
         )
 
-        // Язык
-        if (config.language != "auto") {
+        // Язык: оставляем авто, если не указано явно. Это позволяет Whisper автоматически определять язык.
+        if (config.language.isNotEmpty() && config.language != "auto") {
             cmd.add("--language")
             cmd.add(config.language)
         }
 
-        // Промпт
-        if (config.initialPrompt.isNotBlank()) {
+        // Промпт: Отключено, так как может влиять на распознавание
+        /*if (config.initialPrompt.isNotBlank()) {
             cmd.add("--prompt")
             cmd.add(config.initialPrompt)
-        }
+        }*/
 
         return cmd.toTypedArray()
     }

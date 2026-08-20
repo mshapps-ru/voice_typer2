@@ -16,15 +16,15 @@ data class AppConfig(
 
     // Параметры Whisper
     val modelSize: String = "base",
-    val device: String = "auto",
+    val device: String = "cpu",
     val beamSize: Int = 5,
 
     // Язык
-    val language: String = "ru",
+    val language: String = "",
     val appLanguage: String = "ru",
 
     // Параметры ввода
-    val initialPrompt: String = "Разговор на русском языке. Текст полностью на русском.",
+    val initialPrompt: String = "",
 
     // Окно
     val windowSize: String = "260x160"

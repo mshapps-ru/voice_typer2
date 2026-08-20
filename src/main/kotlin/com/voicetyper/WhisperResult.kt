@@ -24,12 +24,13 @@ class WhisperJsonParser {
         // JSON обычно в конце вывода, после всех debug-сообщений
         
         // Ищем начало JSON объекта
-        val jsonStart = findJsonStart(output)
-        if (jsonStart == -1) {
+        // Ищем начало и конец JSON объекта. Whisper может вывести много debug‑текстов.
+        val jsonRange = findJsonRange(output)
+        if (jsonRange.first == -1 || jsonRange.second == -1) {
             return TranscriptionResult("", success = false, error = "JSON не найден в выводе whisper-cli.exe")
         }
 
-        val jsonStr = output.substring(jsonStart).trim()
+        val jsonStr = output.substring(jsonRange.first, jsonRange.second + 1).trim()
         
         // Логирование JSON для отладки
         if (jsonStr.length < 1000) {
@@ -42,13 +43,6 @@ class WhisperJsonParser {
             val jsonElement = JsonParser.parseString(jsonStr)
             val jsonObject = jsonElement.asJsonObject
             
-            // Извлекаем поле text
-            val text = if (jsonObject.has("text")) {
-                jsonObject.get("text").asString
-            } else {
-                ""
-            }.trim()
-
             // Извлекаем язык (опционально)
             val language = if (jsonObject.has("language")) {
                 jsonObject.get("language").asString
@@ -56,8 +50,31 @@ class WhisperJsonParser {
                 "unknown"
             }
 
+            // Составляем полный текст из сегментов/прямого поля
+            var text=""
+            if (jsonObject.has("segments")) {
+                val segments = jsonObject.getAsJsonArray("segments")
+                for (elem in segments) {
+                    val segObj = elem.asJsonObject
+                    if (segObj.has("text")) {
+                        text += segObj.get("text").asString + " "
+                    }
+                }
+            } else if (jsonObject.has("transcription")) {
+                val transArr = jsonObject.getAsJsonArray("transcription")
+                for (elem in transArr) {
+                    val tObj = elem.asJsonObject
+                    if (tObj.has("text")) {
+                        text += tObj.get("text").asString + " "
+                    }
+                }
+            } else if (jsonObject.has("text")) {
+                text = jsonObject.get("text").asString
+            }
+            text = text.trim()
+
             logger.info("Распознано: '$text' (язык: $language)")
-            
+
             if (text.isEmpty()) {
                 TranscriptionResult.NotRecognized
             } else {
@@ -73,9 +90,27 @@ class WhisperJsonParser {
      * Находит начало JSON объекта в строке
      * JSON начинается с '{'
      */
-    private fun findJsonStart(input: String): Int {
-        val braceIndex = input.indexOf('{')
-        return if (braceIndex >= 0) braceIndex else -1
+    /**
+     * Ищет диапазон первого полноценного JSON‑объекта в строке.
+     * Возвращает пару <начало, конец> индексов. Если не найден – (-1,-1).
+     */
+    private fun findJsonRange(input: String): Pair<Int, Int> {
+        val start = input.indexOf('{')
+        if (start == -1) return Pair(-1, -1)
+
+        var depth = 0
+        for (i in start until input.length) {
+            when (input[i]) {
+                '{' -> depth++
+                '}' -> {
+                    depth--
+                    if (depth == 0) {
+                        return Pair(start, i)
+                    }
+                }
+            }
+        }
+        return Pair(-1, -1)
     }
 
     /**

@@ -25,10 +25,11 @@ class WavFileWriter {
         val byteRate = sampleRate * numChannels * bitsPerSample / 8
         val blockAlign = numChannels * bitsPerSample / 8
         val dataSize = numSamples * 2 // 2 bytes per sample
-        val bufferSize = 36 + dataSize // WAV header + data
+        // Correct file size: RIFF chunk (44 bytes) + dataSize
+        val fileSize = 44 + dataSize
 
         FileOutputStream(outputPath).use { out ->
-            writeHeader(out, bufferSize, numChannels, sampleRate, bitsPerSample, dataSize)
+            writeHeader(out, fileSize, numChannels, sampleRate, bitsPerSample, dataSize)
             out.write(shortArrayToBytes(pcmData))
             out.flush()
         }
