@@ -38,7 +38,7 @@ class AppProcessor(
         setupUi()
         
         // Настройка горячих клавиш (ЗАКОММЕНТИРОВАНО - временно отключено)
-        // setupHotkeys()
+        setupHotkeys()
         
         // Запуск транскрипции
         if (!whisperEngine.initialize()) {
@@ -54,7 +54,6 @@ class AppProcessor(
     }
 
     // Закомментировано - временно отключено
-    /*
     private fun setupHotkeys() {
         val hkRecord = config.recordKey.lowercase()
         val hkLang = config.langToggleHotkey.lowercase()
@@ -62,14 +61,12 @@ class AppProcessor(
 
         hotkeyListener.registerForPress(false, hkRecord) { startRecording() }
         hotkeyListener.registerForPress(true, hkRecord) { stopRecording() }
-        
+
         hotkeyListener.registerForPress(true, hkLang) { toggleLanguage() }
         hotkeyListener.registerForPress(true, hkShow) { toggleVisibility() }
-        
-        hotkeyListener.start()
+
         logger.info("Горячие клавиши настроены: F9=запись, F10=язык, F8=окно")
     }
-    */
 
     private fun startRecording() {
         if (isRecording) return
@@ -178,7 +175,7 @@ class AppProcessor(
     fun shutdown() {
         logger.info("Остановка Voice Typer")
         executor.shutdown()
-        // hotkeyListener.close() // Закомментировано
+        hotkeyListener.close()
         trayManager.shutdown()
         Logger.shutdown()
     }

@@ -27,7 +27,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.12.1")
     implementation("net.java.dev.jna:jna:5.15.0")
     implementation("net.java.dev.jna:jna-platform:5.15.0")
-    testImplementation(kotlin("test"))
+        testImplementation(kotlin("test"))
     testImplementation("org.mockito:mockito-core:5.15.2")
 }
 

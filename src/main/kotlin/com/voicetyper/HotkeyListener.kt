@@ -1,81 +1,62 @@
 package com.voicetyper
 
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicBoolean
+import com.sun.jna.platform.win32.User32
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Временно отключён из-за проблем с JNA 5.15.0 и сигнатурами HHOOK/HHOOKPROC.
- * Код сохранён в закомментированном виде для последующего восстановления.
+ * Мини‑реализация «глобальных» горячих клавиш.
+ * Проверяет состояние клавиатуры через WinAPI GetAsyncKeyState и вызывает назначенные действия при нажатии и отпускании.
  */
 class HotkeyListener : AutoCloseable {
+    private val user32 = User32.INSTANCE
+    data class KeyActions(var press: (() -> Unit)? = null, var release: (() -> Unit)? = null)
+    private val actions: MutableMap<Int, KeyActions> = ConcurrentHashMap()
+    private val prevState: MutableMap<Int, Boolean> = ConcurrentHashMap()
+    private var running = true
+    private val thread = Thread { loop() }.apply { isDaemon = true; start() }
 
-    // ─── Полный код оставлен для последующего восстановления ───
-    // (см. git diff или предыдущую версию)
+    /**
+     * Регистрирует действие при нажатии (release=false) или отпускании (release=true) клавиши.
+     */
+    fun registerForPress(release: Boolean, keyName: String, action: () -> Unit) {
+        val vk = KeyMap[keyName.lowercase()] ?: return
+        val entry = actions.getOrPut(vk) { KeyActions() }
+        if (release) entry.release = action else entry.press = action
+    }
+
+    override fun close() { running = false }
+
+    private fun loop() {
+        while (running) {
+            for ((vk, keyAction) in actions) {
+                val pressed = user32.GetAsyncKeyState(vk).toInt() != 0
+                val wasPressed = prevState[vk] ?: false
+                if (!wasPressed && pressed) keyAction.press?.invoke()
+                if (wasPressed && !pressed) keyAction.release?.invoke()
+                prevState[vk] = pressed
+            }
+            Thread.sleep(50)
+        }
+    }
 
     companion object {
-        const val VK_F8 = 0xF7
-        const val VK_F9 = 0xF8
-        const val VK_F10 = 0xF9
-        const val VK_F11 = 0xFA
-        const val VK_F12 = 0xFB
-        const val VK_ESCAPE = 0x1B
-        const val VK_SPACE = 0x20
-        const val VK_LCONTROL = 0xA2
-        const val VK_RCONTROL = 0xA3
-        const val VK_LSHIFT = 0xA0
-        const val VK_RSHIFT = 0xA1
-        const val VK_LMENU = 0xA4
-        const val VK_RMENU = 0xA5
-        const val VK_RETURN = 0x0D
-        const val VK_TAB = 0x09
-        const val VK_BACK = 0x08
+        private val KeyMap = mapOf(
+            "f8" to 0x77,
+            "f9" to 0x78,
+            "f10" to 0x79,
+            "f11" to 0x7A,
+            "f12" to 0x7B,
+            "escape" to 0x1B,
+            "backspace" to 0x08,
+            "tab" to 0x09,
+            "enter" to 0x0D,
+            "space" to 0x20,
+            "lcontrol" to 0xA2,
+            "rcontrol" to 0xA3,
+            "lshift" to 0xA0,
+            "rshift" to 0xA1,
+            "lmenu" to 0x12,
+            "rmenu" to 0x12
+        )
     }
-
-    private val logger = Logger.loggerFor("HotkeyListener")
-    private val keyEvents = ConcurrentLinkedQueue<KeyEvent>()
-    private val eventListeners = mutableListOf<(KeyEvent) -> Unit>()
-
-    @Volatile
-    private var isRunning = AtomicBoolean(false)
-
-    // stub
-    private var hookHandle: Any? = null
-
-    private val keyMap = mapOf(
-        "f8" to VK_F8, "f9" to VK_F9, "f10" to VK_F10, "f11" to VK_F11, "f12" to VK_F12,
-        "escape" to VK_ESCAPE, "backspace" to VK_BACK, "tab" to VK_TAB, "enter" to VK_RETURN,
-        "space" to VK_SPACE, "lcontrol" to VK_LCONTROL, "lshift" to VK_LSHIFT,
-        "lmenu" to VK_LMENU, "rcontrol" to VK_RCONTROL, "rshift" to VK_RSHIFT, "rmenu" to VK_RMENU,
-    )
-
-    fun start() {
-        logger.warn("HotkeyListener отключён — временно недоступен")
-        isRunning.set(true)
-    }
-
-    fun onKeyPress(action: (KeyEvent) -> Unit) { eventListeners.add { event -> if (event.type == KeyEventType.PRESS) action(event) } }
-    fun onKeyRelease(action: (KeyEvent) -> Unit) { eventListeners.add { event -> if (event.type == KeyEventType.RELEASE) action(event) } }
-    fun getEventListeners(): List<(KeyEvent) -> Unit> = eventListeners
-
-    fun registerForPress(release: Boolean, keyName: String, action: () -> Unit) {
-        // stub
-    }
-
-    override fun close() {
-        isRunning.set(false)
-        eventListeners.clear()
-    }
-
-    private fun getKeyName(lParamLong: Long): String = ""
-
-    private fun vkCodeToName(vk: Int): String = when (vk) {
-        VK_F8 -> "f8"; VK_F9 -> "f9"; VK_F10 -> "f10"; VK_F11 -> "f11"; VK_F12 -> "f12"
-        VK_ESCAPE -> "escape"; VK_SPACE -> "space"
-        VK_LCONTROL, VK_RCONTROL -> "lcontrol"; VK_LSHIFT, VK_RSHIFT -> "lshift"
-        VK_LMENU, VK_RMENU -> "lmenu"; VK_RETURN -> "enter"; VK_TAB -> "tab"; VK_BACK -> "backspace"
-        else -> vk.toString()
-    }
-
-    data class KeyEvent(val type: KeyEventType, val key: String)
-    enum class KeyEventType { PRESS, RELEASE }
 }
