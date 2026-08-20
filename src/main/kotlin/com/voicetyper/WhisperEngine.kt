@@ -116,9 +116,9 @@ class WhisperEngine(private val config: AppConfig) {
                 val wawFileForDelete = File(wavFile.parentFile, wavFile.name)
                 val jsonFileForDelete = File(wavFile.parentFile, wavFile.name + ".json")
                 logger.info("Удаляем временный wav файл: ${wawFileForDelete}")
-                wawFileForDelete.delete();
+                wawFileForDelete.delete()
                 logger.info("Удаляем временный json файл: ${jsonFileForDelete}")
-                jsonFileForDelete.delete();
+                jsonFileForDelete.delete()
                 result
             } catch (e: Exception) {
                 logger.error("Ошибка транскрипции: ${e.message}")
